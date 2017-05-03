@@ -1,0 +1,30 @@
+Script started on Tue 02 May 2017 02:54:00 PM PDT
+
+root@ece373:~/usbMount/pci_led_driver# cd /sys/module/e1000e/drivers/pci\:e1000e/
+root@ece373:/sys/module/e1000e/drivers/pci:e1000e# echo -n "0000:03:00.0" > unbind
+root@ece373:/sys/module/e1000e/drivers/pci:e1000e# cd /sys/module/pciLED/drivers/pci\:pciLED/
+root@ece373:/sys/module/pciLED/drivers/pci:pciLED# echo -n "0000:03:00.0" > bind
+root@ece373:/sys/module/pciLED/drivers/pci:pciLED# cd ~/usbMount/pci_led_driver/userTest/
+root@ece373:~/usbMount/pci_led_driver/userTest# ./a.out
+Read pre assert, result: 78406
+read post assert, pre-disable, result: 7844e
+Read pre assert, result: 7840f
+read post assert, pre-disable, result: 7844e
+Read pre assert, result: 7840f
+read post assert, pre-disable, result: 7844e
+Read pre assert, result: 7840f
+read post assert, pre-disable, result: 7844e
+Read pre assert, result: 7840f
+read post assert, pre-disable, result: 7844e
+Read pre assert, result: 7840f
+read post assert, pre-disable, result: 7844e
+Read pre assert, result: 7840f
+read post assert, pre-disable, result: 7844e
+Read pre assert, result: 7840f
+read post assert, pre-disable, result: 7844e
+^C
+root@ece373:~/usbMount/pci_led_driver# echo "0000:03:00.0" > /sys/module/pciLED/drivers/pci\:pciLED/unbind
+root@ece373:~/usbMount/pci_led_driver# echo "0000:03:00.0" > /sys/module/e1000e/drivers/pci\:e1000e/bind
+root@ece373:~/usbMount/pci_led_driver/userTest# exit
+
+Script done on Tue 02 May 2017 02:55:22 PM PDT
