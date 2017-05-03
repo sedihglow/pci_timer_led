@@ -30,7 +30,7 @@ static struct pci_device_id gbe83v_ids[] = {
 };
 
 static struct pci_driver gbe83v = {
-    .name     = "pciLED",
+    .name     = DEV_NAME,
     .id_table = gbe83v_ids,
     .probe    = gbe38v_probe, 
     .remove   = gbe38v_remove
@@ -48,7 +48,6 @@ static int __init pci_led_init(void)
 {
     long errRet;
 
-    printk(KERN_ALERT DEV_NAME ": start of setup\n");
     /* get major and minor */
     errRet = alloc_chrdev_region(&(myDev.devNum), MINOR_STRT, MINOR_CNT, 
                                  DEV_NAME);
@@ -99,7 +98,7 @@ static int __init pci_led_init(void)
         goto pci_register_fail;
     }
     
-    printk(KERN_ALERT DEV_NAME ": End of setup\n");
+    printk(KERN_INFO DEV_NAME ": Setup Complete\n");
     
     return SUCCESS;
 
@@ -123,6 +122,7 @@ static void __exit pci_led_exit(void)
     class_destroy(myDev.pciClass);
     unregister_chrdev_region(myDev.devNum, MINOR_CNT);
     cdev_del(myDev.cdev);
+    printk(KERN_INFO "unloaded %s\n", DEV_NAME);
 }/* end pci_led_exit */
 
 module_init(pci_led_init);
@@ -130,8 +130,7 @@ module_exit(pci_led_exit);
 
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("James Ross");
-MODULE_DESCRIPTION("Sets the led's on the ethernet port on an ATOM box"
-                    "utilizing pci.");
+MODULE_DESCRIPTION();
 
 MODULE_VERSION("0.1"); /* Look for convention in module.h */
 /********************* EOF *******************/

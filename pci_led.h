@@ -6,8 +6,8 @@
  * written by: James Ross
  ******************************************************************************/
 
-#ifndef _PCI_LED_
-#define _PCI_LED_
+#ifndef _PCI_LED_H
+#define _PCI_LED_H
 
 #include <linux/init.h>
 #include <linux/module.h>
@@ -24,6 +24,7 @@
 #include <linux/io.h>
 #include <asm/io.h>
 #include <linux/vmalloc.h>
+
 
 #define SUCCESS 0
 #define FAILURE -1

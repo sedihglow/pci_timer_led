@@ -2,7 +2,7 @@ KERNEL_DIR = /lib/modules/$(shell uname -r)/build
 PWD := $(shell pwd)
 
 TARGET = pciLED
-pciLED-objs := pci_ledDriver.o pci_led.o 
+pciLED-objs := pci_ledDriver.o pci_led.o ledTimer.o
 
 obj-m += $(TARGET).o
 

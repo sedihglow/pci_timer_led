@@ -6,23 +6,25 @@
  * Written by: James Ross
  ******************************************************************************/
 #include "pci_led.h"
+#include "ledTimer.h"
 
-#define REG_SIZE sizeof(int)
-#define ONE_BYTE 1
-#define MM_BAR0  0 /* memory map IO on 82583 is bar0 */
-#define TWO_BYTE  2
-#define FOUR_BYTE 4
+#define REG_SIZE   sizeof(int)
+#define ONE_BYTE   1
+#define MM_BAR0    0 /* memory map IO on 82583 is bar0 */
+#define TWO_BYTE   2
+#define FOUR_BYTE  4
 
-static struct{
+                /* global variables */
+static struct pci_data{
     void __iomem *hwAddr;
     int bar;
 }pciData;
 
+                    /* functions */
 int gbe38v_probe(struct pci_dev *pdev, const struct pci_device_id *ent)
 {
     int errRet;
     resource_size_t mmioStart, mmioLen;
-
 
     errRet = pci_enable_device_mem(pdev);
     if(unlikely(errRet != SUCCESS)){
@@ -47,7 +49,8 @@ int gbe38v_probe(struct pci_dev *pdev, const struct pci_device_id *ent)
     mmioStart = pci_resource_start(pdev, MM_BAR0);
     mmioLen   = pci_resource_len(pdev, MM_BAR0);
 
-    pciData.hwAddr = ioremap(mmioStart, mmioLen);/* get virtual space addr */
+    /* get physical space addr */
+    pciData.hwAddr = ioremap(mmioStart, mmioLen);
     if(unlikely(!pciData.hwAddr)){
         printk(KERN_WARNING DEV_NAME ": Failed to remap io, errRet: %d", errRet);
         errRet = -EIO;
@@ -76,14 +79,24 @@ void gbe38v_remove(struct pci_dev *pdev)
 
 int gbe38v_open(struct inode *inode, struct file *file)
 {
-    printk(KERN_DEBUG DEV_NAME ": Device opened"); 
+    printk(KERN_INFO DEV_NAME ": Device opened\n"); 
+    /* have hardware address, can initialize the timer for pci device LED */
+    gbe38v_init_led_timer((pciData.hwAddr)+LED_OFFSET);
+
     return SUCCESS;
 }/* end gbe38v_open */
+
+int gbe38v_release(struct inode *inode, struct file *file)
+{
+    gbe38v_remove_led_timer();
+    printk(KERN_INFO DEV_NAME ": Device closed\n");
+    return SUCCESS;
+}/* end gbe38v_release */
 
 ssize_t gbe38v_read(struct file *filep, char __user *buff, size_t count, 
                   loff_t *offp)
 {
-    long retVal = 0;
+    unsigned long retVal;
 
     /* read 0 bytes */
     if(unlikely(count == 0))
@@ -123,8 +136,8 @@ ssize_t gbe38v_read(struct file *filep, char __user *buff, size_t count,
 ssize_t gbe38v_write(struct file *filep, const char __user *buff, size_t count,
                    loff_t *offp)
 {
-    long retVal;
-    int toWrite;
+    unsigned long retVal;
+    unsigned long toWrite;
 
     if(unlikely(count == 0))/* write 0 bytes */
         return SUCCESS;

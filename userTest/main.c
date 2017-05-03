@@ -17,7 +17,7 @@
 #define LED0_ON 0x4E /* assert LED, set invery bit */
 #define LED0_OFF 0xF 
 
-// #define DEBUG 0
+#define DEBUG 0
 
 int main(void)
 {
@@ -32,7 +32,7 @@ int main(void)
         printf("open error\n");
         exit(EXIT_FAILURE);
     }
-    
+#ifndef DEBUG
     while(true){
         /* read led control register from driver, 32bit */
         retBytes = read(fd, &readBuff,sizeof(int)); 
@@ -80,6 +80,8 @@ int main(void)
 
         sleep(2);
     }
-
+#endif
+    sleep(15);
+    close(fd);
     exit(EXIT_SUCCESS);
 }
