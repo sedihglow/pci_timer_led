@@ -7,22 +7,10 @@
  ******************************************************************************/
 
 #include "ledTimer.h"
-#include <linux/init.h>
-#include <linux/module.h>
-#include <linux/cdev.h>
-#include <linux/slab.h>
-#include <linux/kdev_t.h>
-#include <linux/types.h>
-#include <linux/export.h>
-#include <linux/fs.h>
-#include <linux/device.h>
-#include <linux/uaccess.h>
-#include <linux/pci.h>
-#include <linux/ioport.h>
-#include <linux/io.h>
-#include <asm/io.h>
-#include <linux/vmalloc.h>
-#include <linux/jiffies.h>
+
+#define T_OFF 0x0
+#define T_ON  0x1
+#define T_DEL 0x3
 
 /* blinks-per-second */ 
 static int blinkRate_g = DFT_BLRATE; 
@@ -44,7 +32,7 @@ static inline void gbe38v_update_timer(int *blinkTime, unsigned long *jiff)
     *jiff      = jiffies;
 }/* end gbe38v_update_timer */
 
-static void gbe38v_toggle_led(void *ledReg)
+static void gbe38v_toggle_led(void __iomem *ledReg)
 {
     unsigned long regVal;
     unsigned long toWrite;
@@ -52,16 +40,13 @@ static void gbe38v_toggle_led(void *ledReg)
     /* read the current value of the LED control register, set toWrite */
     regVal = ioread32(ledReg);
     
-    printk(KERN_ALERT "pciLED : in toggle_led, regVal: %ld\n", regVal);
     /* write the appropriate bits to toggle LED */
-    if(regVal & LED0_ON){
-        printk(KERN_ALERT "pciLED : in LED_ON\n");
+    if(regVal == LED0_ON){
         toWrite = regVal & ~LED0_ON; /* clear LED_ON bits */
         toWrite |= LED0_OFF;
         iowrite32(toWrite, ledReg);
     }
     else{ /* LED_OFF */
-        printk(KERN_ALERT "pciLED : LED_OFF\n");
         toWrite = regVal & ~LED0_OFF; /* clear LED_OFF bits */
         toWrite |= LED0_ON;
         iowrite32(toWrite, ledReg);
@@ -76,27 +61,48 @@ static void gbe38v_openBlink_cb(unsigned long data)
     gbe38v_toggle_led(val->ledCtlReg);
 
     gbe38v_update_timer(&(val->blinkTime), &(val->jiff));
+    
     mod_timer(&openTimer, (jiffies + (val->blinkTime * HZ)));
 }/* end gbe38v_timer_ledToggle */
 
                 /* header function declarations */
-void gbe38v_init_led_timer(void *ledCtlReg)
+int gbe38v_init_led_timer(void __iomem *ledCtlReg)
 {
     gbe38v_update_timer(&(ledTimerData.blinkTime), &(ledTimerData.jiff));
     setup_timer(&openTimer, gbe38v_openBlink_cb, (unsigned long)&ledTimerData);
+
     /* set timerData and ensure LED register is set to LED_OFF */
     ledTimerData.ledCtlReg = ledCtlReg;
     iowrite32(LED0_OFF, ledCtlReg);
+
+    /* if param gets set to 0, do not blink, do not start timer. */
+    if(unlikely(blinkRate_g == 0)){
+        printk(KERN_WARNING "pciLED: Blink rate has been set to 0, no blink\n");
+        return SUCCESS;
+    }
+    else if(unlikely(blinkRate_g < 0)){
+        printk(KERN_WARNING "pciLED: Blink rate paramater changed to negetive,"
+               "Invalid parameter.\n");
+        return -EINVAL;
+    }
+
     mod_timer(&openTimer, (jiffies + ((ledTimerData.blinkTime) * HZ)));
+    return SUCCESS;
 }/* end gbe38v_init_timer */
 
-int get_blink_rate(void)
+int gbe38v_timer_blink_rate(void)
 {
-    return ledTimerData.blinkTime;
+    return blinkRate_g;
 }/* end get_blink_rate */
+
+void gbe38v_set_timer_blink_rate(int blinkRate)
+{
+    blinkRate_g = blinkRate;
+}/* end gbe38v_set_timer_blink_rate */
 
 void gbe38v_remove_led_timer(void)
 {
+    iowrite32(LED0_OFF, ledTimerData.ledCtlReg);
     del_timer_sync(&openTimer);
 }/* end gbe38v_remove_led_timer */
 /************** EOF ***************/

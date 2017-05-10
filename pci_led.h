@@ -37,6 +37,8 @@
                 /* Function prototypes */
 int gbe38v_open(struct inode *inode, struct file *file);
 
+int gbe38v_release(struct inode *inode, struct file *file);
+
 ssize_t gbe38v_read(struct file *filep, char __user *buff, size_t count, 
                   loff_t *offp);
 

@@ -11,8 +11,6 @@
 #define REG_SIZE   sizeof(int)
 #define ONE_BYTE   1
 #define MM_BAR0    0 /* memory map IO on 82583 is bar0 */
-#define TWO_BYTE   2
-#define FOUR_BYTE  4
 
                 /* global variables */
 static struct pci_data{
@@ -81,7 +79,11 @@ int gbe38v_open(struct inode *inode, struct file *file)
 {
     printk(KERN_INFO DEV_NAME ": Device opened\n"); 
     /* have hardware address, can initialize the timer for pci device LED */
-    gbe38v_init_led_timer((pciData.hwAddr)+LED_OFFSET);
+    if(gbe38v_init_led_timer((pciData.hwAddr)+LED_OFFSET) != SUCCESS){
+        printk(KERN_WARNING DEV_NAME ":Invalid parameter. Change parameter from"
+               "negetive value and try opening again.\n");
+        return -EINVAL;
+    }
 
     return SUCCESS;
 }/* end gbe38v_open */
@@ -96,33 +98,24 @@ int gbe38v_release(struct inode *inode, struct file *file)
 ssize_t gbe38v_read(struct file *filep, char __user *buff, size_t count, 
                   loff_t *offp)
 {
+    unsigned long blinkRate;
     unsigned long retVal;
 
     /* read 0 bytes */
     if(unlikely(count == 0))
         return 0;
-    
-    switch(count){
-        case  ONE_BYTE: 
-            retVal = ioread8((pciData.hwAddr)+LED_OFFSET);
-            break;
-        case TWO_BYTE: 
-            retVal = ioread16((pciData.hwAddr)+LED_OFFSET);
-            break;
-        case FOUR_BYTE: 
-            retVal = ioread32((pciData.hwAddr)+LED_OFFSET);
-            break;
-        default: /* error */
-            printk(KERN_WARNING DEV_NAME ": invalid count, 1,2 or 4 bytes\n");
-            return -EINVAL;
-    }
 
+    if(count != sizeof(int))
+        printk(KERN_WARNING DEV_NAME ": Count is not sizeof(int), read will be.\n");
+    
     if(unlikely(buff  == NULL)){
         printk(KERN_WARNING DEV_NAME ": NULL __user buffer\n");
         return -EINVAL;
     } /* NULL buffer */
 
-    retVal = copy_to_user((int*)buff, &retVal , count);
+    blinkRate = gbe38v_timer_blink_rate();
+
+    retVal = copy_to_user((int*)buff, &blinkRate, count);
     if(unlikely(retVal != SUCCESS)){
         if(retVal > SUCCESS)
             printk(KERN_WARNING DEV_NAME ": read: copy_to_user(), partial copy\n");
@@ -147,6 +140,9 @@ ssize_t gbe38v_write(struct file *filep, const char __user *buff, size_t count,
         return -EINVAL;
     } 
 
+    if(count != sizeof(int))
+        printk(KERN_WARNING DEV_NAME ": Count is not sizeof(int), write will be.\n");
+    
     retVal = copy_from_user(&toWrite, (int*)buff, count);
     if(unlikely(retVal != SUCCESS)){
         if(retVal > SUCCESS){
@@ -158,21 +154,13 @@ ssize_t gbe38v_write(struct file *filep, const char __user *buff, size_t count,
             return retVal;
     }
 
-    switch(count){
-        case  ONE_BYTE: 
-            iowrite8(toWrite,(pciData.hwAddr)+LED_OFFSET);
-            break;
-        case TWO_BYTE: 
-            iowrite16(toWrite, (pciData.hwAddr)+LED_OFFSET);
-            break;
-        case FOUR_BYTE: 
-            iowrite32(toWrite, (pciData.hwAddr)+LED_OFFSET);
-            break;
-        default: /* error */
-            printk(KERN_WARNING DEV_NAME ": invalid count, 1,2 or 4 bytes\n");
-            return -EINVAL;
+    if(toWrite < 0){
+        printk(KERN_WARNING DEV_NAME ": blink rate cannot be negetive.\n");
+        return -EINVAL;
     }
+    
+    gbe38v_set_timer_blink_rate(toWrite);
 
     return SUCCESS;
-}/*end gbe_write */
+}/* end gbe_write */
 /****************** EOF **************/

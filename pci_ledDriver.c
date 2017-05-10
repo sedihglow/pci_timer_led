@@ -37,10 +37,11 @@ static struct pci_driver gbe83v = {
 };
 
 static struct file_operations fops = {
-    .owner = THIS_MODULE,
-    .open  = gbe38v_open,
-    .read  = gbe38v_read,
-    .write = gbe38v_write
+    .owner   = THIS_MODULE,
+    .open    = gbe38v_open,
+    .read    = gbe38v_read,
+    .write   = gbe38v_write,
+	.release = gbe38v_release
 };
 
                     /* functions */

@@ -14,17 +14,13 @@
 #include <fcntl.h>
 #include <stdbool.h>
 
-#define LED0_ON 0x4E /* assert LED, set invery bit */
-#define LED0_OFF 0xF 
-
-#define DEBUG 0
-
+#define B_RATE 5
 int main(void)
 {
     int retBytes = 0;
     int fd;
     int readBuff = 0;
-    int toWrite = LED0_ON;
+    int toWrite = B_RATE;
 
     /* open driver */
     fd = open("/dev/pciLED", O_RDWR);
@@ -32,56 +28,25 @@ int main(void)
         printf("open error\n");
         exit(EXIT_FAILURE);
     }
-#ifndef DEBUG
-    while(true){
-        /* read led control register from driver, 32bit */
-        retBytes = read(fd, &readBuff,sizeof(int)); 
-        if(retBytes == -1){
-            printf("read1 error\n");
-            exit(EXIT_FAILURE);
-        }
+   
+    read(fd, &readBuff, sizeof(int));
 
-        /* print the returned value */
-        printf("Read pre assert, result: %x\n", readBuff);
-        
-        /* clear first nibble */
-        readBuff &= 0xFFFFFFF0;
+    printf("pre-write: blink rate: %d\n", readBuff);
 
-        /* set value to write, keeping current bits */
-        toWrite = readBuff | LED0_ON; /* only change desired bit */
+    sleep(5); /* watch LED blink at module default/param rate */
 
-        /* write to the led control register, make led turn on */
-        retBytes = write(fd, &toWrite, sizeof(int));
-        
-        /* read the register again and view the result */
-        retBytes = read(fd, &readBuff,sizeof(int)); 
-        if(retBytes == -1){
-            printf("read1 error\n");
-            exit(EXIT_FAILURE);
-        }
-        printf("read post assert, pre-disable, result: %x\n", readBuff);
+    printf("post first sleep\n");
 
-        sleep(2);
+    write(fd, &toWrite, sizeof(int));
 
-        /* read the register again and view the result */
-        retBytes = read(fd, &readBuff,sizeof(int)); 
-        if(retBytes == -1){
-            printf("read1 error\n");
-            exit(EXIT_FAILURE);
-        }
+    printf("post-write, pre-read\n");
 
-        /* clear first nibble */
-        readBuff &= ~LED0_ON;
+    read(fd, &readBuff, sizeof(int));
 
-        toWrite = readBuff | LED0_OFF; /* only change desired bit */
+    printf("post-write: blink rate: %d\n", readBuff);
 
-        /* write to the led control register, make led turn on */
-        retBytes = write(fd, &toWrite, sizeof(int));
+    sleep(15); /* watch led blink at B_RATE */
 
-        sleep(2);
-    }
-#endif
-    sleep(15);
     close(fd);
     exit(EXIT_SUCCESS);
 }
